@@ -1,7 +1,8 @@
 // Copyright 2020 Drew M. Johnson
 
 #include <stdio.h>
-#include <vector>
+#include <iostream>
+//#include <vector>
 #include <curl/curl.h>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
@@ -17,7 +18,8 @@ int main(int argc, char *argv[])
 	// Use curl to get JSON from API
 	CURL *curl;
 	CURLcode curl_error;
-	const char* MLB_API_URL = "http://statsapi.mlb.com/api/v1/schedule?hydrate=game(content(editorial(recap))),decisions&date=2018-06-10&sportId=1";
+	const char* MLB_API_URL = 
+		"http://statsapi.mlb.com/api/v1/schedule?hydrate=game(content(editorial(recap))),decisions&date=2018-06-10&sportId=1";
 	
 	struct MemoryStruct chunk;
 	chunk.memory = (char*)malloc(1);
@@ -34,7 +36,9 @@ int main(int argc, char *argv[])
 
 		//TODO: Do some cleaner error handling here
 		if (curl_error != CURLE_OK) {
-			fprintf(stderr, "curl_easy_perform() failed: %s\n", curl_easy_strerror(curl_error));
+			fprintf(stderr, 
+				"curl_easy_perform() failed: %s\n", 
+				curl_easy_strerror(curl_error));
 			return -1; // Halt program
 		}
 		
@@ -44,7 +48,18 @@ int main(int argc, char *argv[])
 	// Parse JSON
 	rapidjson::Document document;
 	document.Parse(chunk.memory);
-	printf("totalItems=%d\n", document["totalItems"].GetInt()); //TODO: temp, remove later
+	//printf("totalItems=%d\n", document["totalItems"].GetInt()); //TODO: temp, remove later
+
+	/* TODO: This will be useful later
+	rapidjson::Value& games = document["dates"][0]["games"];
+	
+	
+	for (rapidjson::SizeType i = 0; i < games.Size(); i++) {
+		printf("Game #%d Details:\n", i);
+		printf("%s vs. %s\n",
+			games[i]["teams"]["away"]["team"]["name"].GetString(),
+			games[i]["teams"]["home"]["team"]["name"].GetString());
+	}*/
 	
 	// Initialize SDL Video subsystem, an OpenGL context, and GLEW
 	SDL_Init(SDL_INIT_VIDEO);
@@ -61,15 +76,92 @@ int main(int argc, char *argv[])
 	glewExperimental = GL_TRUE;
 	glewInit();
 
-	//TEMP_START
+	// Create and bind vertex array object
+	GLuint vertexArray;
+	glGenVertexArrays(1, &vertexArray);
+	glBindVertexArray(vertexArray);
+
+	// Create and bind vertex buffer object
 	GLuint vertexBuffer;
 	glGenBuffers(1, &vertexBuffer);
-	printf("%u\n", vertexBuffer);
-	//TEMP_END
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+
+	// List of points to draw
+	float vertices[] = {
+		 0.5f,  0.5f,
+		 0.5f, -0.5f,
+		-0.5f, -0.5f,
+		-0.5f,  0.5f
+	};
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+	// Create vertex shader
+	const char* vertexSource = R"glsl(
+		#version 150 core
+
+		in vec2 position;
+
+		void main()
+		{
+			gl_Position = vec4(position, 0.0, 1.0);
+		}
+	)glsl";
+	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+	glShaderSource(vertexShader, 1, &vertexSource, NULL);
+	glCompileShader(vertexShader);
+
+	// Get vertex shader compilation errors & warnings //TODO make debug only
+	GLint compile_status;
+	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &compile_status);
+	if (compile_status == GL_TRUE)
+		printf("vertex shader_compiled!\n");
+
+	// Create fragment shader
+	const char* fragmentSource = R"glsl(
+		#version 150 core
+
+		out vec4 outColor;
+
+		void main()
+		{
+			outColor = vec4(1.0, 1.0, 1.0, 1.0);
+		}
+	)glsl";
+	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+	glCompileShader(fragmentShader);
+
+	// Get fragment shader compilation errors & warnings //TODO make debug only
+	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &compile_status);
+	if (compile_status == GL_TRUE)
+		printf("fragment shader compiled!\n");
+
+	// Additional shader info //TODO: enable for debug
+	// char buffer[512];
+	// glGetShaderInfoLog(vertexShader, 512, NULL, buffer);
+	// std::cout << buffer << std::endl;
+
+	// Attach shaders to program
+	GLuint shaderProgram = glCreateProgram();
+	glAttachShader(shaderProgram, vertexShader);
+	glAttachShader(shaderProgram, fragmentShader);
+
+	// Direct output to framebuffer
+	glBindFragDataLocation(shaderProgram, 0, "outColor");
+
+	// Link and use program
+	glLinkProgram(shaderProgram);
+	glUseProgram(shaderProgram);
+
+	// Link vertex data to the shader program attribute
+	GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
+	glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glEnableVertexAttribArray(posAttrib);
+
+	glDrawArrays(GL_QUADS, 0, 4);
 
 	// Event handling loop
 	SDL_Event windowEvent;
-	//while (true)
 	for (;;)
 	{
 	    if (SDL_PollEvent(&windowEvent))
@@ -85,4 +177,3 @@ int main(int argc, char *argv[])
 	SDL_Quit();
 	return 0;
 }
-

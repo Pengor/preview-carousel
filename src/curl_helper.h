@@ -8,8 +8,8 @@ extern "C" {
 #define CURL_HELPER_H
 
 struct MemoryStruct {
-  char *memory;
-  size_t size;
+	char *memory;
+	size_t size;
 };
 
 size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *data);
@@ -19,4 +19,3 @@ size_t WriteMemoryCallback(void *contents, size_t size, size_t nmemb, void *data
 #ifdef __cplusplus
 }
 #endif
-
