@@ -7,7 +7,9 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
 #include "game_list.h"
-#include "vertex_helper.h"
+#include "element_helper.h"
+#include "vertices.h"
+#include "shaders.h"
 
 #define GLEW_STATIC
 
@@ -19,7 +21,10 @@ int main(int argc, char *argv[])
 	// Call API and build list of important details of the day's games
 	GameList game_list = GameList(MLB_API_URL);
 
-	size_t active_game_num = 0;
+	const size_t NUM_THUMBNAILS = 13;
+	size_t active_game = 0;
+	size_t leftmost_game = 0;
+	size_t rightmost_game = NUM_THUMBNAILS - 1;
 
 	// Initialize SDL window, modules, and OpenGL context
 	SDL_Init(SDL_INIT_VIDEO);
@@ -39,6 +44,10 @@ int main(int argc, char *argv[])
 	glewExperimental = GL_TRUE;
 	glewInit();
 
+	// Enable blending
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); 
+
 	// Create and bind vertex array object
 	GLuint vertexArray;
 	glGenVertexArrays(1, &vertexArray);
@@ -49,281 +58,9 @@ int main(int argc, char *argv[])
 	glGenBuffers(1, &vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
-	// List of points to draw
-	//float* vertices = vert_help::BuildVertices(0.1f, 0.1f, 1.5f, 13);
-	//vert_help::BuildVertices(0.1f, 0.1f, 1.5f, 13);
-	float vertices[] = {
-		// Background vertices
-		-1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		 1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		// Game thumbnail vertices
-		-0.95f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.85f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.85f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.95f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.80f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.70f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.70f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.80f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.65f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.55f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.55f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.65f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.50f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.40f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.40f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.50f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.35f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.25f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.25f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.35f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.20f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.10f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.10f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.20f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.05f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.05f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.05f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.05f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.10f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.20f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.20f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.10f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.25f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.35f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.35f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.25f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.40f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.50f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.50f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.40f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.55f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.65f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.65f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.55f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.70f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.80f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.80f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.70f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.85f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.95f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.95f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.85f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		// Headline text vertices
-		-0.95f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.85f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.85f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.95f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.80f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.70f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.70f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.80f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.65f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.55f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.55f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.65f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.50f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.40f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.40f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.50f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.35f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.25f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.25f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.35f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.20f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.10f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.10f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.20f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.05f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		 0.05f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		 0.05f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.05f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.10f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.20f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.20f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.10f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.25f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.35f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.35f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.25f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.40f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.50f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.50f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.40f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.55f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.65f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.65f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.55f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.70f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.80f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.80f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.70f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.85f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.95f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.95f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.85f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		// Detail text vertices
-		-0.95f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.85f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.85f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.95f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.80f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.70f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.70f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.80f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.65f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.55f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.55f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.65f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.50f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.40f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.40f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.50f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.35f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.25f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.25f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.35f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.20f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.10f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.10f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.20f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.05f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		 0.05f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		 0.05f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.05f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.10f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.20f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.20f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.10f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.25f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.35f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.35f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.25f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.40f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.50f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.50f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.40f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.55f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.65f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.65f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.55f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.70f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.80f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.80f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.70f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.85f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.95f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.95f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.85f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		// Focused game thumbnail vertices
-		-0.95f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.85f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.85f*1.5f, -0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.95f*1.5f, -0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.80f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.70f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.70f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.80f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.65f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.55f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.55f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.65f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.50f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.40f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.40f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.50f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.35f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.25f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.25f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.35f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.20f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		-0.10f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		-0.10f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.20f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		-0.05f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		 0.05f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		 0.05f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		-0.05f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.10f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.20f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.20f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.10f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.25f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.35f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.35f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.25f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.40f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.50f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.50f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.40f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.55f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.65f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.65f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.55f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.70f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.80f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.80f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.70f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
-
-		0.85f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
-		0.95f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
-		0.95f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.85f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f
-	};
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+	// Load list of vertices
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices::array), vertices::array, 
+				 GL_STATIC_DRAW);
 
 	// Create and bind element buffer object
 	GLuint elementBuffer;
@@ -331,149 +68,14 @@ int main(int argc, char *argv[])
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
 
 	// List of which vertices to use to form pairs of triangles
-	GLuint elements[(13 * 4 + 1) * vert_help::VERTICES_PER_RECT];
-	vert_help::BuildElements(elements, (13 * 4) + 1);
-	for (size_t i = 0; i < (13 * 4 + 1) * 6; i++)
-	{
-		std::cout << elements[i] << std::endl;
-	}/*
-	elements[0] = 0;
-	elements[1] = 1;
-	elements[2] = 2;
-	elements[3] = 2;
-	elements[4] = 3;
-	elements[5] = 0;*/
-	/*GLuint elements[] = {
-		// Background
-		 0,  1,  2,
-		 2,  3,  0,
-
-		// Game thumbnail
-		 4,  5,  6,
-		 6,  7,  4,
-
-		 8,  9, 10,
-		10, 11,  8,
-
-		12, 13, 14,
-		14, 15, 12,
-
-		16, 17, 18,
-		18, 19, 16,
-
-		20, 21, 22,
-		22, 23, 20,
-
-		24, 25, 26,
-		26, 27, 24,
-
-		28, 29, 30,
-		30, 31, 28,
-
-		32, 33, 34,
-		34, 35, 32,
-
-		36, 37, 38,
-		38, 39, 36,
-
-		40, 41, 42,
-		42, 43, 40,
-
-		44, 45, 46,
-		46, 47, 44,
-
-		48, 49, 50,
-		50, 51, 48,
-
-		52, 53, 54,
-		54, 55, 52,
-
-		// Headline text
-		 4,  5,  6,
-		 6,  7,  4,
-
-		 8,  9, 10,
-		10, 11,  8,
-
-		12, 13, 14,
-		14, 15, 12,
-
-		16, 17, 18,
-		18, 19, 16,
-
-		20, 21, 22,
-		22, 23, 20,
-
-		24, 25, 26,
-		26, 27, 24,
-
-		28, 29, 30,
-		30, 31, 28,
-
-		32, 33, 34,
-		34, 35, 32,
-
-		36, 37, 38,
-		38, 39, 36,
-
-		40, 41, 42,
-		42, 43, 40,
-
-		44, 45, 46,
-		46, 47, 44,
-
-		48, 49, 50,
-		50, 51, 48,
-
-		52, 53, 54,
-		54, 55, 52,
-
-		// Details text
-		 4,  5,  6,
-		 6,  7,  4,
-
-		 8,  9, 10,
-		10, 11,  8,
-
-		12, 13, 14,
-		14, 15, 12,
-
-		16, 17, 18,
-		18, 19, 16,
-
-		20, 21, 22,
-		22, 23, 20,
-
-		24, 25, 26,
-		26, 27, 24,
-
-		28, 29, 30,
-		30, 31, 28,
-
-		32, 33, 34,
-		34, 35, 32,
-
-		36, 37, 38,
-		38, 39, 36,
-
-		40, 41, 42,
-		42, 43, 40,
-
-		44, 45, 46,
-		46, 47, 44,
-
-		48, 49, 50,
-		50, 51, 48,
-
-		52, 53, 54,
-		54, 55, 52
-	};*/
+	GLuint elements[(NUM_THUMBNAILS * 4 + 1) * elem_help::VERTICES_PER_RECT];
+	elem_help::BuildElements(elements, (NUM_THUMBNAILS * 4) + 1);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements,
 				 GL_STATIC_DRAW);
 
 	// Setup TTF font
 	TTF_Font *font = TTF_OpenFont("res/font/Roboto-Regular.ttf", 16);
-	SDL_Color text_color = {0, 0, 0};
+	SDL_Color text_color = {255, 255, 255};
 #ifdef DEBUG
 	if (!font)
 	{
@@ -486,6 +88,8 @@ int main(int argc, char *argv[])
 	GLuint texture[num_textures];
 	glGenTextures(num_textures, texture);
 
+	GLint color_format = GL_RGB;
+
 	for (size_t i = 0; i < num_textures; i++)
 	{
 		glBindTexture(GL_TEXTURE_2D, texture[i]);
@@ -493,27 +97,21 @@ int main(int argc, char *argv[])
 
 		if (i >= game_list.GetListSize() * 2 + 1)
 		{
-			std::cout << "Details!" << std::endl;
 			// Render game details text as a surface
-			std::string details = game_list.GetDetails((i - (game_list.GetListSize() * 2 + 1)));
-			surface = TTF_RenderText_Solid(font, details.data(), text_color);
-			
-			std::cout << "i: " << (i - (game_list.GetListSize() + 1)) << std::endl;
-			//std::cout << "game details(str): " << game_list.GetDetails((i - (game_list.GetListSize() + 1))) << std::endl;
-			//std::cout << "game details: " << new std::string(details.data()) << std::endl;
-			std::cout << "surface: " << surface->h << " " << surface->w << std::endl;
+			std::string details = game_list.GetDetails(
+				i - (game_list.GetListSize() * 2 + 1));
+			surface = TTF_RenderText_Blended_Wrapped(font, details.data(), 
+													 text_color, 128);
+			color_format = GL_RGBA;
 		}
 		else if (i > game_list.GetListSize())
 		{
-			std::cout << "Headline!" << std::endl;
 			// Render game headline text as a surface
-			std::string headline = game_list.GetHeadline((i - (game_list.GetListSize() + 1)));
-			surface = TTF_RenderText_Solid(font, headline.data(), text_color);
-			
-			std::cout << "i: " << (i - (game_list.GetListSize() + 1)) << std::endl;
-			std::cout << "game headline(str): " << game_list.GetHeadline((i - (game_list.GetListSize() + 1))) << std::endl;
-			std::cout << "game headline: " << new std::string(headline.data()) << std::endl;
-			std::cout << "surface: " << surface->h << " " << surface->w << std::endl;
+			std::string headline = game_list.GetHeadline(
+				i - (game_list.GetListSize() + 1));
+			surface = TTF_RenderText_Blended_Wrapped(font, headline.data(), 
+													 text_color, 128);
+			color_format = GL_RGBA;
 		}
 		else if (i > 0)
 		{
@@ -523,22 +121,19 @@ int main(int argc, char *argv[])
 											game_list.GetPhotoSize(i - 1));
 			surface = IMG_Load_RW(rwop, true);
 			game_list.ReleasePhoto(i - 1);
-			std::cout << "thumbnails" << std::endl;
 		}
 		else if (i == 0)
 		{
 			// Render the background image as a surface
 			surface = IMG_Load("res/background.jpg");
-			std::cout << "background" << std::endl;
 		}
 
 #ifdef DEBUG
 		if (!surface)
 			std::cout << "IMG_Load: " << IMG_GetError() << std::endl;
 #endif //DEBUG
-
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, surface->w, surface->h, 0,
-					 GL_RGB, GL_UNSIGNED_BYTE, surface->pixels);
+		glTexImage2D(GL_TEXTURE_2D, 0, color_format, surface->w, surface->h, 0,
+					 color_format, GL_UNSIGNED_BYTE, surface->pixels);
 		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -547,25 +142,27 @@ int main(int argc, char *argv[])
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	// Create vertex shader
-	const char *vertexSource = R"glsl(
-		#version 150 core
+	// const char *vertexSource = R"glsl(
+	// 	#version 150 core
 
-		in vec2 position;
-		in vec3 color;
-		in vec2 texcoord;
+	// 	in vec2 position;
+	// 	//in vec3 color;
+	// 	in vec4 color;
+	// 	in vec2 texcoord;
 
-		out vec3 Color;
-		out vec2 Texcoord;
+	// 	//out vec3 Color;
+	// 	out vec4 Color;
+	// 	out vec2 Texcoord;
 
-		void main()
-		{
-			Color = color;
-			Texcoord = texcoord;
-			gl_Position = vec4(position, 0.0, 1.0);
-		}
-	)glsl";
+	// 	void main()
+	// 	{
+	// 		Color = color;
+	// 		Texcoord = texcoord;
+	// 		gl_Position = vec4(position, 0.0, 1.0);
+	// 	}
+	// )glsl";
 	GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-	glShaderSource(vertexShader, 1, &vertexSource, NULL);
+	glShaderSource(vertexShader, 1, &shaders::vertexSource, NULL);
 	glCompileShader(vertexShader);
 
 #ifdef DEBUG
@@ -582,22 +179,24 @@ int main(int argc, char *argv[])
 #endif //DEBUG
 
 	// Create fragment shader
-	const char *fragmentSource = R"glsl(
-		#version 150 core
+	// const char *fragmentSource = R"glsl(
+	// 	#version 150 core
 		
-		in vec3 Color;
-		in vec2 Texcoord;
+	// 	//in vec3 Color;
+	// 	in vec4 Color;
+	// 	in vec2 Texcoord;
 		
-		out vec4 outColor;
-		uniform sampler2D tex;
+	// 	out vec4 outColor;
+	// 	uniform sampler2D tex;
 		
-		void main()
-		{
-			outColor = texture(tex, Texcoord) * vec4(Color, 1.0);
-		}
-	)glsl";
+	// 	void main()
+	// 	{
+	// 		//outColor = texture(tex, Texcoord) * vec4(Color, 1.0);
+	// 		outColor = texture(tex, Texcoord) * Color;
+	// 	}
+	// )glsl";
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+	glShaderSource(fragmentShader, 1, &shaders::fragmentSource, NULL);
 	glCompileShader(fragmentShader);
 
 #ifdef DEBUG
@@ -626,60 +225,114 @@ int main(int argc, char *argv[])
 
 	// Link vertex data to the shader program attribute
 	GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-	glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
+	glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
 						  0);
 	glEnableVertexAttribArray(posAttrib);
 
 	// Link color data to the shader program attribute
 	GLint colorAttrib = glGetAttribLocation(shaderProgram, "color");
-	glVertexAttribPointer(colorAttrib, 3, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
+	glVertexAttribPointer(colorAttrib, 4, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
 						  (void *)(2 * sizeof(float)));
 	glEnableVertexAttribArray(colorAttrib);
 
 	// Link texture data to te shader program attribute
 	GLint texAttrib = glGetAttribLocation(shaderProgram, "texcoord");
-	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
-						  (void *)(5 * sizeof(float)));
+	glVertexAttribPointer(texAttrib, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float),
+						  (void *)(6 * sizeof(float)));
 	glEnableVertexAttribArray(texAttrib);
 
 	GLint texUniform = glGetUniformLocation(shaderProgram, "tex");
 
-	// Event handling loop
+	// Event handling & drawing loop
 	SDL_Event windowEvent;
 	while (true)
 	{
+		// Handle left & right keypresses and window closure
 		if (SDL_PollEvent(&windowEvent))
 		{
 			if (windowEvent.type == SDL_QUIT)
+			{
 				break;
+			}
+			else if (windowEvent.type == SDL_KEYDOWN)
+			{
+				switch (windowEvent.key.keysym.sym)
+				{
+				case SDLK_LEFT:
+					if (active_game == leftmost_game && leftmost_game > 0)
+					{
+						leftmost_game--;
+						rightmost_game--;
+					}
+					if (active_game > 0)
+						active_game--;
+					break;
+				case SDLK_RIGHT:
+					if (active_game == rightmost_game && 
+						rightmost_game < game_list.GetListSize() - 1)
+					{
+						rightmost_game++;
+						leftmost_game++;
+					}
+					if (active_game < game_list.GetListSize() - 1)
+						active_game++;
+					break;
+				}
+			}
 		}
 		
 		// Draw triangles
-		//for (size_t i = 0; i < 14; i++)
-		for (size_t i = 0; i < 1+(13*3); i++)
+		for (size_t i = 0; i < num_textures; i++)
 		{
+			size_t element_location;
+
 			glActiveTexture(GL_TEXTURE0);
 			glBindTexture(GL_TEXTURE_2D, texture[i]);
-			//TODO: Think there's an issue here with there being more textures
-			// than there are elements (mismatch of sizes)
 			glUniform1i(texUniform, 0);
-			//if (i == active_game_num + 1)
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
-						   (GLvoid*)(i * 6 * sizeof(GLuint)));
+
+			if (i == 0)
+			{
+				// Draw background
+				element_location = 0;
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
+							   (GLvoid*)(element_location));
+			}
+			else if (i >= leftmost_game + 1 && i <= rightmost_game + 1)
+			{
+				if (i != active_game + 1)
+					element_location = (i - leftmost_game) * 6 * sizeof(GLuint);
+				else
+					element_location = (i - leftmost_game + NUM_THUMBNAILS * 3) * 6 * sizeof(GLuint);
+
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
+							   (GLvoid*)(element_location));
+			}
+			else if (i == game_list.GetListSize() * 2 + active_game + 1 &&
+					 i >= game_list.GetListSize() * 2 + leftmost_game + 1 &&
+					 i <= game_list.GetListSize() * 2 + rightmost_game + 1)
+			{
+				element_location = (i /*- 1*/ - 2 * (game_list.GetListSize() - NUM_THUMBNAILS) - leftmost_game) * 6 * sizeof(GLuint);
+				//element_location = (i)
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
+							   (GLvoid*)(element_location));
+			}
+			else if (i == game_list.GetListSize() + active_game + 1 &&
+					 i >= game_list.GetListSize() + leftmost_game + 1 &&
+					 i <= game_list.GetListSize() + rightmost_game + 1)
+			{
+				element_location = (i /*+ 1*/ - (game_list.GetListSize() - NUM_THUMBNAILS) - leftmost_game)  * 6 * sizeof(GLuint);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
+							   (GLvoid*)(element_location));
+			}
+			//else
+			//{
+				//std::cout << "undrawn texture: " << i << std::endl;
+			//}
+			
 		}
-
-		// Draw text for active game
-		/*for (size_t i = 0; i < 2; i++)
-		{
-			size_t game_tex_index = active_game_num * i + 1;
-			glActiveTexture(GL_TEXTURE0);
-			glBindTexture(GL_TEXTURE_2D, texture[game_tex_index]);
-			glUniform1i(texUniform, 0);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
-						   (GLvoid*)(game_tex_index * 6 * sizeof(GLuint)));
-		}*/
-
+		
 		SDL_GL_SwapWindow(window);
+		glClear(GL_COLOR_BUFFER_BIT);
 	}
 
 	// Shutdown procedure

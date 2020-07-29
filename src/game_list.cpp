@@ -9,45 +9,15 @@ GameList::Game::Game(const char *photo_url, const char *away_team,
 					 const char *home_team, const char *field, const char *time)
 {
 	this->photo_url = photo_url;
-	//this->away_team = away_team;
-	//this->home_team = home_team;
-	//this->field = field;
-	//this->time = time;
 
-	this->headline = away_team + " vs. "s + home_team;
+	this->headline = away_team + " vs "s + home_team;
 	std::string time_str = time;
-	this->details = time_str.substr(10, 15) + "\nat\n"s + field;
+	this->details = time_str.substr(11, 5) + "\n"s + field;
 
 	this->photo.memory = (char *)malloc(1);
 	this->photo.size = 0;
 }
 
-/*
-std::string GameList::Game::GetPhotoUrl(void)
-{
-	return photo_url;
-}
-
-std::string GameList::Game::GetAwayTeam(void)
-{
-	return away_team;
-}
-
-std::string GameList::Game::GetHomeTeam(void)
-{
-	return home_team;
-}
-
-std::string GameList::Game::GetField(void)
-{
-	return field;
-}
-
-std::string GameList::Game::GetTime(void)
-{
-	return time;
-}
-*/
 std::string GameList::Game::GetHeadline(void)
 {
 	return headline;
@@ -123,33 +93,6 @@ size_t GameList::GetListSize(void)
 {
 	return list_size;
 }
-
-/*
-std::string GameList::GetPhotoUrl(size_t index)
-{
-	return list[index].GetPhotoUrl();
-}
-
-std::string GameList::GetAwayTeam(size_t index)
-{
-	return list[index].GetAwayTeam();
-}
-
-std::string GameList::GetHomeTeam(size_t index)
-{
-	return list[index].GetHomeTeam();
-}
-
-std::string GameList::GetField(size_t index)
-{
-	return list[index].GetField();
-}
-
-std::string GameList::GetTime(size_t index)
-{
-	return list[index].GetTime();
-}
-*/
 
 std::string GameList::GetHeadline(size_t index)
 {
