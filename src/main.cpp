@@ -1,16 +1,13 @@
 // Copyright 2020 Drew M. Johnson
 
-#include <stdio.h>
 #include <iostream>
-//#include <vector>
-//#include <curl/curl.h>
+#include <string>
 #include <GL/glew.h>
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_ttf.h>
-//#include "rapidjson/document.h"
-//#include "curl_helper.h"
 #include "game_list.h"
+#include "vertex_helper.h"
 
 #define GLEW_STATIC
 
@@ -19,72 +16,26 @@ const char *MLB_API_URL =
 
 int main(int argc, char *argv[])
 {
+	// Call API and build list of important details of the day's games
 	GameList game_list = GameList(MLB_API_URL);
 
-	//TODO: Consider caching the API response to speed up future runs of program
+	size_t active_game_num = 0;
 
-	// Use curl to get JSON from API
-	/*CURL *curl;
-	CURLcode curl_error;
-	
-	
-	struct MemoryStruct chunk;
-	chunk.memory = (char*)malloc(1);
-	chunk.size = 0;
-	
-	curl = curl_easy_init();
-
-	if (curl) {
-		curl_easy_setopt(curl, CURLOPT_URL, MLB_API_URL);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-
-		curl_error = curl_easy_perform(curl);
-
-		//TODO: Do some cleaner error handling here
-		if (curl_error != CURLE_OK) {
-			fprintf(stderr, 
-				"curl_easy_perform() failed: %s\n", 
-				curl_easy_strerror(curl_error));
-			return -1; // Halt program
-		}
-		
-		curl_easy_cleanup(curl);
-	}
-	
-	// Parse JSON
-	rapidjson::Document document;
-	document.Parse(chunk.memory);
-	free(chunk.memory); //TODO: confirm this works
-	//printf("totalItems=%d\n", document["totalItems"].GetInt()); //TODO: temp, remove later
-
-	// TODO: This will be useful later
-	// rapidjson::Value& games = document["dates"][0]["games"];
-	
-	// for (rapidjson::SizeType i = 0; i < games.Size(); i++) {
-	// 	printf("Game #%d Details:\n", i);
-	// 	printf("%s vs. %s\n",
-	// 		games[i]["teams"]["away"]["team"]["name"].GetString(),
-	// 		games[i]["teams"]["home"]["team"]["name"].GetString());
-	// }
-	document.SetObject(); // Clear and minimize the JSON document
-	*/
-
-	// Initialize SDL Video subsystem, an OpenGL context, and GLEW
+	// Initialize SDL window, modules, and OpenGL context
 	SDL_Init(SDL_INIT_VIDEO);
-
 	IMG_Init(IMG_INIT_JPG);
-
+	TTF_Init();
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 	SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-
-	SDL_Window *window = SDL_CreateWindow("Preview Carousel",
-										  100, 100, 800, 600, SDL_WINDOW_OPENGL | SDL_WINDOW_MAXIMIZED);
-
+	SDL_Window *window =
+		SDL_CreateWindow("Preview Carousel",
+						 100, 100, 200, 200,
+						 SDL_WINDOW_OPENGL | SDL_WINDOW_MAXIMIZED);
 	SDL_GLContext context = SDL_GL_CreateContext(window);
 
+	// Initialize GLEW
 	glewExperimental = GL_TRUE;
 	glewInit();
 
@@ -99,7 +50,16 @@ int main(int argc, char *argv[])
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 
 	// List of points to draw
+	//float* vertices = vert_help::BuildVertices(0.1f, 0.1f, 1.5f, 13);
+	//vert_help::BuildVertices(0.1f, 0.1f, 1.5f, 13);
 	float vertices[] = {
+		// Background vertices
+		-1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		 1.0f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-1.0f, -1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		// Game thumbnail vertices
 		-0.95f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
 		-0.85f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
 		-0.85f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
@@ -163,7 +123,206 @@ int main(int argc, char *argv[])
 		0.85f, 0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
 		0.95f, 0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
 		0.95f, -0.05f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
-		0.85f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f};
+		0.85f, -0.05f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		// Headline text vertices
+		-0.95f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.85f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.85f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.95f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.80f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.70f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.70f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.80f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.65f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.55f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.55f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.65f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.50f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.40f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.40f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.50f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.35f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.25f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.25f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.35f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.20f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.10f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.10f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.20f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.05f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		 0.05f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.05f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.05f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.10f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.20f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.20f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.10f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.25f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.35f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.35f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.25f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.40f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.50f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.50f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.40f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.55f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.65f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.65f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.55f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.70f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.80f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.80f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.70f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.85f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.95f*1.5f, 0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.95f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.85f*1.5f, 0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		// Detail text vertices
+		-0.95f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.85f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.85f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.95f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.80f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.70f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.70f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.80f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.65f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.55f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.55f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.65f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.50f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.40f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.40f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.50f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.35f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.25f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.25f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.35f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.20f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.10f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.10f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.20f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.05f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		 0.05f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.05f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.05f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.10f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.20f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.20f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.10f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.25f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.35f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.35f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.25f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.40f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.50f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.50f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.40f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.55f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.65f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.65f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.55f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.70f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.80f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.80f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.70f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.85f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.95f*1.5f, -0.08f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.95f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.85f*1.5f, -0.1f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		// Focused game thumbnail vertices
+		-0.95f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.85f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.85f*1.5f, -0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.95f*1.5f, -0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.80f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.70f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.70f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.80f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.65f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.55f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.55f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.65f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.50f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.40f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.40f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.50f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.35f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.25f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.25f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.35f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.20f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		-0.10f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		-0.10f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.20f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		-0.05f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		 0.05f*1.5f,  0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		 0.05f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		-0.05f*1.5f,  -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.10f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.20f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.20f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.10f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.25f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.35f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.35f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.25f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.40f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.50f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.50f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.40f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.55f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.65f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.65f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.55f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.70f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.80f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.80f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.70f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f,
+
+		0.85f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f,
+		0.95f*1.5f, 0.05f*1.5f, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f,
+		0.95f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 1.0f, 1.0f,
+		0.85f*1.5f, -0.05f*1.5f,  1.0f, 1.0f, 1.0f, 0.0f, 1.0f
+	};
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
 	// Create and bind element buffer object
@@ -171,16 +330,30 @@ int main(int argc, char *argv[])
 	glGenBuffers(1, &elementBuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, elementBuffer);
 
-	// List of which vertices to use to form triangles
-	GLuint elements[] = {
-		0, 1, 2,
-		2, 3, 0,
+	// List of which vertices to use to form pairs of triangles
+	GLuint elements[(13 * 4 + 1) * vert_help::VERTICES_PER_RECT];
+	vert_help::BuildElements(elements, (13 * 4) + 1);
+	for (size_t i = 0; i < (13 * 4 + 1) * 6; i++)
+	{
+		std::cout << elements[i] << std::endl;
+	}/*
+	elements[0] = 0;
+	elements[1] = 1;
+	elements[2] = 2;
+	elements[3] = 2;
+	elements[4] = 3;
+	elements[5] = 0;*/
+	/*GLuint elements[] = {
+		// Background
+		 0,  1,  2,
+		 2,  3,  0,
 
-		4, 5, 6,
-		6, 7, 4,
+		// Game thumbnail
+		 4,  5,  6,
+		 6,  7,  4,
 
-		8, 9, 10,
-		10, 11, 8,
+		 8,  9, 10,
+		10, 11,  8,
 
 		12, 13, 14,
 		14, 15, 12,
@@ -210,31 +383,168 @@ int main(int argc, char *argv[])
 		46, 47, 44,
 
 		48, 49, 50,
-		50, 51, 48};
+		50, 51, 48,
+
+		52, 53, 54,
+		54, 55, 52,
+
+		// Headline text
+		 4,  5,  6,
+		 6,  7,  4,
+
+		 8,  9, 10,
+		10, 11,  8,
+
+		12, 13, 14,
+		14, 15, 12,
+
+		16, 17, 18,
+		18, 19, 16,
+
+		20, 21, 22,
+		22, 23, 20,
+
+		24, 25, 26,
+		26, 27, 24,
+
+		28, 29, 30,
+		30, 31, 28,
+
+		32, 33, 34,
+		34, 35, 32,
+
+		36, 37, 38,
+		38, 39, 36,
+
+		40, 41, 42,
+		42, 43, 40,
+
+		44, 45, 46,
+		46, 47, 44,
+
+		48, 49, 50,
+		50, 51, 48,
+
+		52, 53, 54,
+		54, 55, 52,
+
+		// Details text
+		 4,  5,  6,
+		 6,  7,  4,
+
+		 8,  9, 10,
+		10, 11,  8,
+
+		12, 13, 14,
+		14, 15, 12,
+
+		16, 17, 18,
+		18, 19, 16,
+
+		20, 21, 22,
+		22, 23, 20,
+
+		24, 25, 26,
+		26, 27, 24,
+
+		28, 29, 30,
+		30, 31, 28,
+
+		32, 33, 34,
+		34, 35, 32,
+
+		36, 37, 38,
+		38, 39, 36,
+
+		40, 41, 42,
+		42, 43, 40,
+
+		44, 45, 46,
+		46, 47, 44,
+
+		48, 49, 50,
+		50, 51, 48,
+
+		52, 53, 54,
+		54, 55, 52
+	};*/
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(elements), elements,
 				 GL_STATIC_DRAW);
 
-	// Create and bind texture objects
-	GLuint texture;
-	glGenTextures(1, &texture);
-	glBindTexture(GL_TEXTURE_2D, texture);
-
-	//glGenerateMipmap(GL_TEXTURE_2D); // TODO: Does this belong here?
-
-	SDL_Surface *surface = IMG_Load(/*TODO curled filepath here*/ "release/cut.jpg");
-
-	if (!surface)
+	// Setup TTF font
+	TTF_Font *font = TTF_OpenFont("res/font/Roboto-Regular.ttf", 16);
+	SDL_Color text_color = {0, 0, 0};
+#ifdef DEBUG
+	if (!font)
 	{
-		printf("IMG_Load: %s\n", IMG_GetError());
+		std::cout << TTF_GetError() << std::endl;
 	}
+#endif
 
-	// TODO: Improvement: dynamically get the closest resolution image URL
-	// from the JSON data to lessen the amount of scaling/filtering needed
+	// Create and bind texture objects 
+	size_t num_textures = game_list.GetListSize() * 3 + 1;
+	GLuint texture[num_textures];
+	glGenTextures(num_textures, texture);
+
+	for (size_t i = 0; i < num_textures; i++)
+	{
+		glBindTexture(GL_TEXTURE_2D, texture[i]);
+		SDL_Surface *surface;
+
+		if (i >= game_list.GetListSize() * 2 + 1)
+		{
+			std::cout << "Details!" << std::endl;
+			// Render game details text as a surface
+			std::string details = game_list.GetDetails((i - (game_list.GetListSize() * 2 + 1)));
+			surface = TTF_RenderText_Solid(font, details.data(), text_color);
+			
+			std::cout << "i: " << (i - (game_list.GetListSize() + 1)) << std::endl;
+			//std::cout << "game details(str): " << game_list.GetDetails((i - (game_list.GetListSize() + 1))) << std::endl;
+			//std::cout << "game details: " << new std::string(details.data()) << std::endl;
+			std::cout << "surface: " << surface->h << " " << surface->w << std::endl;
+		}
+		else if (i > game_list.GetListSize())
+		{
+			std::cout << "Headline!" << std::endl;
+			// Render game headline text as a surface
+			std::string headline = game_list.GetHeadline((i - (game_list.GetListSize() + 1)));
+			surface = TTF_RenderText_Solid(font, headline.data(), text_color);
+			
+			std::cout << "i: " << (i - (game_list.GetListSize() + 1)) << std::endl;
+			std::cout << "game headline(str): " << game_list.GetHeadline((i - (game_list.GetListSize() + 1))) << std::endl;
+			std::cout << "game headline: " << new std::string(headline.data()) << std::endl;
+			std::cout << "surface: " << surface->h << " " << surface->w << std::endl;
+		}
+		else if (i > 0)
+		{
+			// Creat a surface for game thumbnails
+			game_list.CurlPhoto(i - 1);
+			SDL_RWops *rwop = SDL_RWFromMem(game_list.GetPhotoPointer(i - 1), 
+											game_list.GetPhotoSize(i - 1));
+			surface = IMG_Load_RW(rwop, true);
+			game_list.ReleasePhoto(i - 1);
+			std::cout << "thumbnails" << std::endl;
+		}
+		else if (i == 0)
+		{
+			// Render the background image as a surface
+			surface = IMG_Load("res/background.jpg");
+			std::cout << "background" << std::endl;
+		}
+
+#ifdef DEBUG
+		if (!surface)
+			std::cout << "IMG_Load: " << IMG_GetError() << std::endl;
+#endif //DEBUG
+
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, surface->w, surface->h, 0,
+					 GL_RGB, GL_UNSIGNED_BYTE, surface->pixels);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, surface->w, surface->h, 0, GL_RGB,
-				 GL_UNSIGNED_BYTE, surface->pixels);
 
 	// Create vertex shader
 	const char *vertexSource = R"glsl(
@@ -258,37 +568,49 @@ int main(int argc, char *argv[])
 	glShaderSource(vertexShader, 1, &vertexSource, NULL);
 	glCompileShader(vertexShader);
 
-	// Get vertex shader compilation errors & warnings //TODO make debug only
+#ifdef DEBUG
+	// Get vertex shader compilation errors & warnings
 	GLint compile_status;
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &compile_status);
 	if (compile_status == GL_TRUE)
-		printf("vertex shader_compiled!\n");
+		std::cout << "Vertex shader successfully compiled!" << std::endl;
+
+	// Additional detailed info
+	char err_buffer_vertex[512];
+	glGetShaderInfoLog(vertexShader, 512, NULL, err_buffer_vertex);
+	std::cout << err_buffer_vertex << std::endl;
+#endif //DEBUG
 
 	// Create fragment shader
 	const char *fragmentSource = R"glsl(
-    #version 150 core
-    in vec3 Color;
-    in vec2 Texcoord;
-    out vec4 outColor;
-    uniform sampler2D tex;
-    void main()
-    {
-        outColor = texture(tex, Texcoord) * vec4(Color, 1.0);
-    }
+		#version 150 core
+		
+		in vec3 Color;
+		in vec2 Texcoord;
+		
+		out vec4 outColor;
+		uniform sampler2D tex;
+		
+		void main()
+		{
+			outColor = texture(tex, Texcoord) * vec4(Color, 1.0);
+		}
 	)glsl";
 	GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
 	glCompileShader(fragmentShader);
 
-	// Get fragment shader compilation errors & warnings //TODO make debug only
+#ifdef DEBUG
+	// Get fragment shader compilation errors & warnings
 	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &compile_status);
 	if (compile_status == GL_TRUE)
-		printf("fragment shader compiled!\n");
+		std::cout << "Fragment shader successfully compiled!" << std::endl;
 
-	// Additional shader info //TODO: enable for debug
-	// char buffer[512];
-	// glGetShaderInfoLog(vertexShader, 512, NULL, buffer);
-	// std::cout << buffer << std::endl;
+	// Additional detailed info
+	char err_buffer_fragment[512];
+	glGetShaderInfoLog(fragmentShader, 512, NULL, err_buffer_fragment);
+	std::cout << err_buffer_fragment << std::endl;
+#endif //DEBUG
 
 	// Attach shaders to program
 	GLuint shaderProgram = glCreateProgram();
@@ -304,7 +626,8 @@ int main(int argc, char *argv[])
 
 	// Link vertex data to the shader program attribute
 	GLint posAttrib = glGetAttribLocation(shaderProgram, "position");
-	glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float), 0);
+	glVertexAttribPointer(posAttrib, 2, GL_FLOAT, GL_FALSE, 7 * sizeof(float),
+						  0);
 	glEnableVertexAttribArray(posAttrib);
 
 	// Link color data to the shader program attribute
@@ -319,30 +642,54 @@ int main(int argc, char *argv[])
 						  (void *)(5 * sizeof(float)));
 	glEnableVertexAttribArray(texAttrib);
 
+	GLint texUniform = glGetUniformLocation(shaderProgram, "tex");
+
 	// Event handling loop
 	SDL_Event windowEvent;
-	for (;;)
+	while (true)
 	{
 		if (SDL_PollEvent(&windowEvent))
 		{
 			if (windowEvent.type == SDL_QUIT)
 				break;
 		}
+		
+		// Draw triangles
+		//for (size_t i = 0; i < 14; i++)
+		for (size_t i = 0; i < 1+(13*3); i++)
+		{
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, texture[i]);
+			//TODO: Think there's an issue here with there being more textures
+			// than there are elements (mismatch of sizes)
+			glUniform1i(texUniform, 0);
+			//if (i == active_game_num + 1)
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
+						   (GLvoid*)(i * 6 * sizeof(GLuint)));
+		}
 
-		//glUniform3f(uniColor, 0.3f, 0.4f, 0.1f);
-		//glDrawArrays(GL_TRIANGLES, 0, 3);
-		glDrawElements(GL_TRIANGLES, 78, GL_UNSIGNED_INT, 0);
+		// Draw text for active game
+		/*for (size_t i = 0; i < 2; i++)
+		{
+			size_t game_tex_index = active_game_num * i + 1;
+			glActiveTexture(GL_TEXTURE0);
+			glBindTexture(GL_TEXTURE_2D, texture[game_tex_index]);
+			glUniform1i(texUniform, 0);
+			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT,
+						   (GLvoid*)(game_tex_index * 6 * sizeof(GLuint)));
+		}*/
 
 		SDL_GL_SwapWindow(window);
 	}
 
-	// Shutdown procedure //TODO: Move to separate function
+	// Shutdown procedure
 	glDeleteProgram(shaderProgram);
 	glDeleteShader(fragmentShader);
 	glDeleteShader(vertexShader);
 	glDeleteBuffers(1, &vertexBuffer);
 	glDeleteVertexArrays(1, &vertexArray);
 	SDL_GL_DeleteContext(context);
+	TTF_Quit();
 	IMG_Quit();
 	SDL_Quit();
 	return 0;

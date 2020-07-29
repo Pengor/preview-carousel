@@ -5,74 +5,178 @@
 #include "curl_helper.h"
 #include "game_list.h"
 
-GameList::Game::Game(const char* photo_url, const char* away_team, const char* home_team, const char* field, const char* time)
+GameList::Game::Game(const char *photo_url, const char *away_team,
+					 const char *home_team, const char *field, const char *time)
 {
 	this->photo_url = photo_url;
-	this->away_team = away_team;
-	this->home_team = home_team;
-	this->field = field;
-	this->time = time;
+	//this->away_team = away_team;
+	//this->home_team = home_team;
+	//this->field = field;
+	//this->time = time;
+
+	this->headline = away_team + " vs. "s + home_team;
+	std::string time_str = time;
+	this->details = time_str.substr(10, 15) + "\nat\n"s + field;
+
+	this->photo.memory = (char *)malloc(1);
+	this->photo.size = 0;
+}
+
+/*
+std::string GameList::Game::GetPhotoUrl(void)
+{
+	return photo_url;
+}
+
+std::string GameList::Game::GetAwayTeam(void)
+{
+	return away_team;
+}
+
+std::string GameList::Game::GetHomeTeam(void)
+{
+	return home_team;
+}
+
+std::string GameList::Game::GetField(void)
+{
+	return field;
+}
+
+std::string GameList::Game::GetTime(void)
+{
+	return time;
+}
+*/
+std::string GameList::Game::GetHeadline(void)
+{
+	return headline;
+}
+
+std::string GameList::Game::GetDetails(void)
+{
+	return details;
+}
+
+void GameList::Game::CurlPhoto(void)
+{
+	// Get photo if it isn't already in memory
+	if (photo.size == 0) 
+	{
+		CurlFromUrl(&photo, photo_url.c_str());
+	}
+}
+
+void GameList::Game::ReleasePhoto(void)
+{
+	free(photo.memory);
+	photo.size = 0;
+}
+
+char* GameList::Game::GetPhotoPointer(void)
+{
+	return photo.memory;
+}
+
+size_t GameList::Game::GetPhotoSize(void)
+{
+	return photo.size;
 }
 
 GameList::GameList(const char *json_url)
 {
-	CURL *curl;
-	CURLcode curl_error;
+	//TODO Improvement: Consider caching the API response to speed up future
+	// runs of program
 
+	// Get JSON from API
 	struct MemoryStruct chunk;
-	chunk.memory = (char *)malloc(1);
-	chunk.size = 0;
-
-	curl = curl_easy_init();
-
-	if (curl)
-	{
-		curl_easy_setopt(curl, CURLOPT_URL, json_url);
-		curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteMemoryCallback);
-		curl_easy_setopt(curl, CURLOPT_WRITEDATA, (void *)&chunk);
-
-		curl_error = curl_easy_perform(curl);
-
-		//TODO: Do some cleaner error handling here
-		if (curl_error != CURLE_OK)
-		{
-			fprintf(stderr,
-					"curl_easy_perform() failed: %s\n",
-					curl_easy_strerror(curl_error));
-		}
-
-		curl_easy_cleanup(curl);
-	}
+	CurlFromUrl(&chunk, json_url);
 
 	// Parse JSON
 	rapidjson::Document document;
 	document.Parse(chunk.memory);
 
+	// Build linked list of details of day's games from JSON data
 	rapidjson::Value &games = document["dates"][0]["games"];
-
-	//list.resize(sizeof(Game) * games.Size());
-
+	list_size = games.Size();
+	list.reserve(list_size);
 	for (rapidjson::SizeType i = 0; i < games.Size(); i++)
 	{
-		const char* photo_url = "";
-		const char* away_team = 
-			games[i]["teams"]["away"]["team"]["name"].GetString();
-		const char* home_team = 
-			games[i]["teams"]["home"]["team"]["name"].GetString();
-		const char* field = "";
-		const char* time = "";
-		//printf("Game #%d Details:\n", i);
-		//printf("%s vs. %s\n",
-		//	games[i]["teams"]["away"]["team"]["name"].GetString(),
-		//	games[i]["teams"]["home"]["team"]["name"].GetString());
-
-		//list.push_back(Game(photo_url, away_team, home_team, field, time));
-		/*list[i] = */
-		//TODO: Figure out why this doesn't work
-		Game game = Game(photo_url, away_team, home_team, field, time);
+		//TODO Improvement: dynamically get most appropriate size image
+		// to fit the screen the application is running on
+		list.emplace_back(
+			games[i]["content"]["editorial"]["recap"]["mlb"]["photo"]["cuts"]
+				 ["135x77"]["src"].GetString(),
+			games[i]["teams"]["away"]["team"]["name"].GetString(),
+			games[i]["teams"]["home"]["team"]["name"].GetString(),
+			games[i]["venue"]["name"].GetString(),
+			games[i]["gameDate"].GetString());
 	}
 
-	// Minimize memory used
+	// Clean up memory footprint
 	free(chunk.memory);
+	chunk.size = 0;
 	document.SetObject();
+}
+
+size_t GameList::GetListSize(void)
+{
+	return list_size;
+}
+
+/*
+std::string GameList::GetPhotoUrl(size_t index)
+{
+	return list[index].GetPhotoUrl();
+}
+
+std::string GameList::GetAwayTeam(size_t index)
+{
+	return list[index].GetAwayTeam();
+}
+
+std::string GameList::GetHomeTeam(size_t index)
+{
+	return list[index].GetHomeTeam();
+}
+
+std::string GameList::GetField(size_t index)
+{
+	return list[index].GetField();
+}
+
+std::string GameList::GetTime(size_t index)
+{
+	return list[index].GetTime();
+}
+*/
+
+std::string GameList::GetHeadline(size_t index)
+{
+	return list[index].GetHeadline();
+}
+
+std::string GameList::GetDetails(size_t index)
+{
+	return list[index].GetDetails();
+}
+
+void GameList::CurlPhoto(size_t index)
+{
+	list[index].CurlPhoto();
+}
+
+void GameList::ReleasePhoto(size_t index)
+{
+	list[index].ReleasePhoto();
+}
+
+char* GameList::GetPhotoPointer(size_t index)
+{
+	return list[index].GetPhotoPointer();
+}
+
+size_t GameList::GetPhotoSize(size_t index)
+{
+	return list[index].GetPhotoSize();
 }
