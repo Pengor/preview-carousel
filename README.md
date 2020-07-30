@@ -17,6 +17,6 @@ Download the project files and enter the following in the root of the project fo
 make
 ./release/main.out
 ```
-# Build & Run Instructions (Windows)
-TBD
 
+# Build & Run Instructions (Windows)
+See `windows` branch!
