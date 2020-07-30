@@ -1,3 +1,5 @@
+// Helper for building list of elements
+
 #include <GL/glew.h>
 #include "element_helper.h"
 

@@ -1,3 +1,5 @@
+// List of vertices
+
 #ifndef VERTICES_H
 #define VERTICES_H
 

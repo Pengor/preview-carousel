@@ -1,3 +1,5 @@
+// GLSL source code for shaders
+
 #ifndef SHADERS_H
 #define SHADERS_H
 

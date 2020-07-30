@@ -1,3 +1,5 @@
+// Container object for data loaded from API's JSON
+
 #include <string>
 #include <vector>
 #include <curl/curl.h>
@@ -5,6 +7,10 @@
 #include "curl_helper.h"
 #include "game_list.h"
 
+const size_t TIME_POS = 11;
+const size_t TIME_LENGTH = 5;
+
+// Build a single game using the given parameters
 GameList::Game::Game(const char *photo_url, const char *away_team,
 					 const char *home_team, const char *field, const char *time)
 {
@@ -12,7 +18,7 @@ GameList::Game::Game(const char *photo_url, const char *away_team,
 
 	this->headline = away_team + " vs "s + home_team;
 	std::string time_str = time;
-	this->details = time_str.substr(11, 5) + "\n"s + field;
+	this->details = time_str.substr(TIME_POS, TIME_LENGTH) + "\n"s + field;
 
 	this->photo.memory = (char *)malloc(1);
 	this->photo.size = 0;
@@ -53,10 +59,10 @@ size_t GameList::Game::GetPhotoSize(void)
 	return photo.size;
 }
 
+// Build object from a given URL to get the JSON data from
 GameList::GameList(const char *json_url)
 {
-	//TODO Improvement: Consider caching the API response to speed up future
-	// runs of program
+	//TODO Improvement: Cache the API response to speed up future runs
 
 	// Get JSON from API
 	struct MemoryStruct chunk;

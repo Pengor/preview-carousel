@@ -1,3 +1,5 @@
+// Helper for building list of elements
+
 #ifndef ELEMENT_HELPER_H
 #define ELEMENT_HELPER_H
 
