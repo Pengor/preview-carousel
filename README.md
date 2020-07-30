@@ -1,20 +1,21 @@
 # preview-carousel
+Displays a list of MLB games and allows the user to move between them to see some details
+
 Submission for Disney Streaming Services Take Home Exercise
 
 # Build & Run Instructions (Linux)
 Make sure the following packages are installed by your package manager:
 ```
 curl
-SDL2
-GLEW
+sdl2
+sdl2_ttf
+sdl2_image
+glew
 ```
-Enter the following in the root of the project folder:
+Download the project files and enter the following in the root of the project folder (where the `makefile` is located):
 ```
-cd src
-gcc -c curl_helper.c
-g++ -c -I../libs/ main.cpp
-g++ -o main -I../libs/ main.o curl_helper.o -lGL -lSDL2 -lGLEW -lcurl
-./main
+make
+./release/main.out
 ```
 # Build & Run Instructions (Windows)
 TBD
