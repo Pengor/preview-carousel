@@ -45,6 +45,7 @@ GLuint* texture;
 // Helper functions
 void Initialize(void);
 int Shutdown(void);
+void VerticesAndElements(void);
 void LoadTextures(void);
 void LoadShaders(void);
 void LinkAttributes(void);
@@ -115,6 +116,7 @@ int Shutdown(void)
 	return 0;
 }
 
+// Create vertex array, vertex buffer, and put them to use
 void VerticesAndElements(void)
 {
 		// Create and bind vertex array object
