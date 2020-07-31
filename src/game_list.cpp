@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <curl/curl.h>
-#include "rapidjson/document.h"
+#include "document.h"
 #include "curl_helper.h"
 #include "game_list.h"
 
