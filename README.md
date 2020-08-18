@@ -1,8 +1,6 @@
 # preview-carousel
 Displays a list of MLB games and allows the user to move between them to see some details
 
-Submission for Disney Streaming Services Take Home Exercise
-
 # Build & Run Instructions (Linux)
 Make sure the following packages are installed by your package manager:
 ```
