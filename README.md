@@ -1,8 +1,6 @@
 # preview-carousel
 Displays a list of MLB games and allows the user to move between them to see some details
 
-Submission for Disney Streaming Services Take Home Exercise
-
 # Build & Run Instructions (Windows)
 Download the project files and open the Visual Studio solution file `vs_solution\preview-carousel.sln`
 
